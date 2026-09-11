@@ -529,6 +529,38 @@ pub fn default_registry() -> HarnessRegistry {
         Box::new(|| zeron_harness::AcpHarness::hermes().installed()),
         Box::new(|| Ok(Arc::new(zeron_harness::AcpHarness::hermes()) as Arc<dyn Harness>)),
     );
+    // Qoder CLI CN exposes a native ACP server (`qodercn --acp`). It owns its
+    // model catalog and permission policy, so the descriptor intentionally
+    // offers no guessed reasoning ladder and uses turn-boundary steering.
+    registry.register_lazy(
+        HarnessDescriptor {
+            id: HarnessId::QoderCn,
+            name: "Qoder CN".into(),
+            supports_steering: true,
+            steering_mode: SteeringMode::TurnBoundary,
+            reasoning_levels: Vec::new(),
+            installed: true,
+            enabled: None,
+        },
+        Box::new(|| zeron_harness::AcpHarness::qoder_cn().installed()),
+        Box::new(|| Ok(Arc::new(zeron_harness::AcpHarness::qoder_cn()) as Arc<dyn Harness>)),
+    );
+    // CodeBuddy Code exposes a native ACP server (`codebuddy --acp`). It owns
+    // its model catalog and permission policy, so use turn-boundary steering
+    // and no static reasoning ladder.
+    registry.register_lazy(
+        HarnessDescriptor {
+            id: HarnessId::Codebuddy,
+            name: "CodeBuddy".into(),
+            supports_steering: true,
+            steering_mode: SteeringMode::TurnBoundary,
+            reasoning_levels: Vec::new(),
+            installed: true,
+            enabled: None,
+        },
+        Box::new(|| zeron_harness::AcpHarness::codebuddy().installed()),
+        Box::new(|| Ok(Arc::new(zeron_harness::AcpHarness::codebuddy()) as Arc<dyn Harness>)),
+    );
     // pi over ACP (community `pi-acp` adapter), same lazy pattern: the static
     // descriptor mirrors AcpHarness::pi() exactly — turn-boundary steering,
     // pi's thinking ladder minus its "off" tier.
@@ -654,6 +686,8 @@ mod tests {
                 HarnessId::Devin,
                 HarnessId::Grok,
                 HarnessId::Hermes,
+                HarnessId::QoderCn,
+                HarnessId::Codebuddy,
                 HarnessId::Pi,
                 HarnessId::Opencode
             ]
@@ -678,7 +712,7 @@ mod tests {
                 ReasoningLevel::High
             ]
         );
-        // Cursor, Devin, Hermes and Pi mirror their specs the same way.
+        // Cursor, Devin, Hermes, Qoder CN, CodeBuddy and Pi mirror their specs the same way.
         let cursor = registry.resolve(HarnessId::Cursor).unwrap();
         assert_eq!(cursor.id(), HarnessId::Cursor);
         assert_eq!(cursor.display_name(), "Cursor");
@@ -694,6 +728,16 @@ mod tests {
         assert_eq!(hermes.display_name(), "Hermes");
         assert_eq!(hermes.steering_mode(), SteeringMode::TurnBoundary);
         assert!(hermes.reasoning_levels().is_empty());
+        let qoder_cn = registry.resolve(HarnessId::QoderCn).unwrap();
+        assert_eq!(qoder_cn.id(), HarnessId::QoderCn);
+        assert_eq!(qoder_cn.display_name(), "Qoder CN");
+        assert_eq!(qoder_cn.steering_mode(), SteeringMode::TurnBoundary);
+        assert!(qoder_cn.reasoning_levels().is_empty());
+        let codebuddy = registry.resolve(HarnessId::Codebuddy).unwrap();
+        assert_eq!(codebuddy.id(), HarnessId::Codebuddy);
+        assert_eq!(codebuddy.display_name(), "CodeBuddy");
+        assert_eq!(codebuddy.steering_mode(), SteeringMode::TurnBoundary);
+        assert!(codebuddy.reasoning_levels().is_empty());
         let opencode = registry.resolve(HarnessId::Opencode).unwrap();
         assert_eq!(opencode.id(), HarnessId::Opencode);
         assert_eq!(opencode.display_name(), "OpenCode");

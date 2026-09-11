@@ -14,6 +14,12 @@ pub enum HarnessId {
     Grok,
     /// Nous Research's Hermes Agent, driven over ACP (`hermes acp`).
     Hermes,
+    /// Qoder CLI CN, driven through its native ACP server (`qodercn --acp`).
+    QoderCn,
+    /// Tencent's CodeBuddy Code, driven through its native ACP server
+    /// (`codebuddy --acp`).
+    #[serde(rename = "codebuddy")]
+    Codebuddy,
     /// The pi coding agent (pi.dev), driven over ACP via the `pi-acp` adapter.
     Pi,
     /// SST's opencode agent, driven natively over its own HTTP/SSE server

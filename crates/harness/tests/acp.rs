@@ -586,7 +586,7 @@ async fn hung_handshake_errors_instead_of_spinning_forever() {
     );
 }
 #[test]
-fn hermes_and_pi_descriptor_surfaces_match_registry_expectations() {
+fn hermes_qoder_cn_codebuddy_and_pi_descriptor_surfaces_match_registry_expectations() {
     let devin = AcpHarness::devin();
     assert_eq!(devin.id(), HarnessId::Devin);
     assert_eq!(devin.display_name(), "Devin");
@@ -600,6 +600,20 @@ fn hermes_and_pi_descriptor_surfaces_match_registry_expectations() {
     assert!(hermes.supports_steering());
     assert_eq!(hermes.steering_mode(), SteeringMode::TurnBoundary);
     assert!(hermes.reasoning_levels().is_empty());
+
+    let qoder_cn = AcpHarness::qoder_cn();
+    assert_eq!(qoder_cn.id(), HarnessId::QoderCn);
+    assert_eq!(qoder_cn.display_name(), "Qoder CN");
+    assert!(qoder_cn.supports_steering());
+    assert_eq!(qoder_cn.steering_mode(), SteeringMode::TurnBoundary);
+    assert!(qoder_cn.reasoning_levels().is_empty());
+
+    let codebuddy = AcpHarness::codebuddy();
+    assert_eq!(codebuddy.id(), HarnessId::Codebuddy);
+    assert_eq!(codebuddy.display_name(), "CodeBuddy");
+    assert!(codebuddy.supports_steering());
+    assert_eq!(codebuddy.steering_mode(), SteeringMode::TurnBoundary);
+    assert!(codebuddy.reasoning_levels().is_empty());
 
     let pi = AcpHarness::pi();
     assert_eq!(pi.id(), HarnessId::Pi);

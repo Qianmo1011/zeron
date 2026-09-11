@@ -195,6 +195,8 @@ icon_assets![
     (DEVIN_MARK, "devin-mark"),
     (GROK_MARK, "grok-mark"),
     (HERMES_MARK, "hermes-mark"),
+    (QODER_MARK, "qoder-mark"),
+    (CODEBUDDY_MARK, "codebuddy-mark"),
     (PI_MARK, "pi-mark"),
     (OPENCODE_MARK, "opencode-mark"),
 ];

@@ -2,8 +2,10 @@
 //! stdio, protocol v1) and maps its session updates onto [`AgentEvent`]s.
 //!
 //! KEPT ONLY for agents built ground-up on ACP: Grok ([`AcpHarness::grok`],
-//! `grok agent stdio`), Devin ([`AcpHarness::devin`], `devin acp`) and Hermes
-//! ([`AcpHarness::hermes`], `hermes acp`) — plus pi
+//! `grok agent stdio`), Devin ([`AcpHarness::devin`], `devin acp`), Hermes
+//! ([`AcpHarness::hermes`], `hermes acp`) and Qoder CLI CN
+//! ([`AcpHarness::qoder_cn`], `qodercn --acp`) and CodeBuddy
+//! ([`AcpHarness::codebuddy`], `codebuddy --acp`) — plus pi
 //! ([`AcpHarness::pi`]) via the community `pi-acp` adapter until a native
 //! driver exists. Claude, Codex and Cursor moved to native drivers
 //! ([`crate::ClaudeHarness`], [`crate::CodexHarness`], [`crate::CursorHarness`])
@@ -397,6 +399,109 @@ fn hermes_spec() -> AcpAgentSpec {
     }
 }
 
+/// Qoder CLI CN's macOS installer puts a dispatcher in `~/.qoder-cn/entry`
+/// and adds it to the interactive shell PATH. Probe it directly because
+/// Finder and launchd do not source `.zprofile`.
+fn qoder_cn_install_paths() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+        dirs.push(home.join(".qoder-cn").join("entry").join("qodercn"));
+        dirs.push(home.join(".qoder-cn").join("entry").join("qoder-cn"));
+        dirs.push(home.join(".local").join("bin").join("qoderclicn"));
+    }
+    dirs
+}
+
+fn qoder_cn_spec() -> AcpAgentSpec {
+    AcpAgentSpec {
+        id: HarnessId::QoderCn,
+        display_name: "Qoder CN",
+        executable: "qodercn",
+        env_override: "QODERCN_EXECUTABLE",
+        // Native ACP server. Deliberately do not add `--yolo`: Zeron's
+        // unattended command plane must retain Qoder's normal permission
+        // policy unless the user has explicitly configured it in Qoder CN.
+        args: &["--acp"],
+        npm_package: None,
+        extra_paths: qoder_cn_install_paths,
+        cli_executable: "qodercn",
+        cli_extra_paths: qoder_cn_install_paths,
+        install_hint: "qodercn (searched PATH, the login shell's PATH, ~/.qoder-cn/entry, and \
+             ~/.local/bin; install Qoder CLI CN, then run `qodercn login`; set \
+             QODERCN_EXECUTABLE to override)",
+        // ACP session configuration is the source of truth. This entry keeps
+        // the picker usable when Qoder CN is signed out or its catalog probe
+        // fails, without inventing Qoder-owned model ids.
+        models: || {
+            vec![Model {
+                id: "default".into(),
+                label: "Qoder CN default".into(),
+                description: Some("Uses the model selected in Qoder CLI CN".into()),
+                reasoning_levels: Vec::new(),
+                options: Vec::new(),
+            }]
+        },
+        // ACP steering is negotiated at initialize time. Qoder CN's documented
+        // surface does not promise the extension, so follow-ups stay queued
+        // at turn boundaries unless a future protocol addition proves it.
+        steering_mode: SteeringMode::TurnBoundary,
+        reasoning_levels: &[],
+        prompt_transform: identity_transform,
+        effort_values: default_effort_values,
+        ladder_extras: &[],
+        prompt_complete_extension: false,
+        prompt_stall: None,
+        stall_hint: "The Qoder CLI CN process is likely wedged; verify `qodercn --acp` and `qodercn login` in Terminal.",
+    }
+}
+
+/// CodeBuddy Code's macOS installer creates a user-local dispatcher. Probe it
+/// directly because Finder and launchd do not inherit interactive shell PATH.
+fn codebuddy_install_paths() -> Vec<PathBuf> {
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .map(|home| vec![home.join(".local").join("bin").join("codebuddy")])
+        .unwrap_or_default()
+}
+
+fn codebuddy_spec() -> AcpAgentSpec {
+    AcpAgentSpec {
+        id: HarnessId::Codebuddy,
+        display_name: "CodeBuddy",
+        executable: "codebuddy",
+        env_override: "CODEBUDDY_EXECUTABLE",
+        // CodeBuddy's native ACP server uses stdio by default. Do not add
+        // `--agent multitask` (incompatible with ACP), nor any permission
+        // bypass flag: retain the user's CodeBuddy permission policy.
+        args: &["--acp"],
+        npm_package: None,
+        extra_paths: codebuddy_install_paths,
+        cli_executable: "codebuddy",
+        cli_extra_paths: codebuddy_install_paths,
+        install_hint: "codebuddy (searched PATH, the login shell's PATH, and ~/.local/bin; \
+             install CodeBuddy Code, then sign in; set CODEBUDDY_EXECUTABLE to override)",
+        // The ACP session catalog is authoritative. This fallback makes the
+        // picker usable before CodeBuddy returns its signed-in model catalog.
+        models: || {
+            vec![Model {
+                id: "default".into(),
+                label: "CodeBuddy default".into(),
+                description: Some("Uses the model selected in CodeBuddy Code".into()),
+                reasoning_levels: Vec::new(),
+                options: Vec::new(),
+            }]
+        },
+        steering_mode: SteeringMode::TurnBoundary,
+        reasoning_levels: &[],
+        prompt_transform: identity_transform,
+        effort_values: default_effort_values,
+        ladder_extras: &[],
+        prompt_complete_extension: false,
+        prompt_stall: None,
+        stall_hint: "The CodeBuddy process is likely wedged; verify `codebuddy --acp` and sign-in in Terminal.",
+    }
+}
+
 fn pi_spec() -> AcpAgentSpec {
     AcpAgentSpec {
         id: HarnessId::Pi,
@@ -565,6 +670,16 @@ impl AcpHarness {
     /// Hermes Agent (`hermes acp`) — Nous Research's native ACP server.
     pub fn hermes() -> Self {
         Self::with_spec(hermes_spec())
+    }
+
+    /// Qoder CLI CN (`qodercn --acp`) — its native ACP server.
+    pub fn qoder_cn() -> Self {
+        Self::with_spec(qoder_cn_spec())
+    }
+
+    /// CodeBuddy Code (`codebuddy --acp`) — its native ACP server.
+    pub fn codebuddy() -> Self {
+        Self::with_spec(codebuddy_spec())
     }
 
     /// The pi coding agent over ACP — the community `pi-acp` adapter wrapping
@@ -3053,6 +3168,12 @@ mod tests {
 
         let grok = initialize_params(HarnessId::Grok);
         assert!(grok["clientCapabilities"].get("_meta").is_none());
+
+        let qoder_cn = initialize_params(HarnessId::QoderCn);
+        assert!(qoder_cn["clientCapabilities"].get("_meta").is_none());
+
+        let codebuddy = initialize_params(HarnessId::Codebuddy);
+        assert!(codebuddy["clientCapabilities"].get("_meta").is_none());
     }
 
     #[test]
